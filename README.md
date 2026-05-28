@@ -24,9 +24,14 @@ Built for Rwanda, works with MTN MoMo.
 
 ## Download
 
-**[Download the latest APK from Releases →](../../releases/latest)**
-
 > Requires Android 7.0+ (API 24). You may need to enable "Install from unknown sources" in your phone settings.
+
+1. Download `app-arm64-v8a-release.apk` from the latest release
+2. Android may block the install because the app requests SMS access.
+   To install, temporarily disable Play Protect:
+   **Play Store > Profile > Play Protect > Settings (gear icon) > Turn off/Pause scanning**
+3. Install the APK, then re-enable Play Protect
+4. Alternatively, install via USB with `adb install app-arm64-v8a-release.apk`
 
 <!-- ## Screenshots -->
 
@@ -103,25 +108,6 @@ To build a signed release APK:
    ```bash
    flutter build apk --release
    ```
-
-## Project structure
-
-```
-lib/
-├── main.dart                      # App entry, home screen UI
-├── models/
-│   └── transaction.dart           # MomoTransaction data model
-├── screens/
-│   ├── analytics_screen.dart      # Spending analytics dashboard
-│   └── onboarding_screen.dart     # First-launch permission screen
-└── services/
-    ├── analytics_service.dart     # Spending calculations & summaries
-    ├── category_service.dart      # Auto-categorization engine
-    ├── database_service.dart      # SQLite storage layer
-    ├── momo_parser.dart           # SMS regex parser (add new formats here)
-    ├── sms_service.dart           # Platform channel to Android SMS
-    └── sync_manager.dart          # Periodic sync scheduler
-```
 
 ## Contributing
 
