@@ -17,7 +17,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE transactions (
@@ -41,6 +41,14 @@ class DatabaseService {
             category TEXT NOT NULL
           )
         ''');
+        await db.execute('''
+          CREATE TABLE budgets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT,
+            amount INTEGER NOT NULL,
+            period TEXT NOT NULL DEFAULT 'monthly'
+          )
+        ''');
         await _seedCategories(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
@@ -53,6 +61,16 @@ class DatabaseService {
             )
           ''');
           await _seedCategories(db);
+        }
+        if (oldVersion < 3) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS budgets (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              category TEXT,
+              amount INTEGER NOT NULL,
+              period TEXT NOT NULL DEFAULT 'monthly'
+            )
+          ''');
         }
       },
     );
@@ -148,5 +166,52 @@ class DatabaseService {
   static Future<void> deleteCategoryRule(int id) async {
     final db = await database;
     await db.delete('category_rules', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ── Categories (unified list) ─────────────────────────
+
+  /// Get all categories ever used (built-in + user-created).
+  static Future<List<String>> getAllCategories() async {
+    final db = await database;
+
+    final fromRules = await db.rawQuery(
+      'SELECT DISTINCT category FROM category_rules ORDER BY category',
+    );
+    final fromTx = await db.rawQuery(
+      'SELECT DISTINCT category FROM transactions WHERE category IS NOT NULL ORDER BY category',
+    );
+
+    final all = <String>{
+      for (final row in fromRules) row['category'] as String,
+      for (final row in fromTx) row['category'] as String,
+    };
+
+    return all.toList()..sort();
+  }
+
+  // ── Budgets ───────────────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> getBudgets() async {
+    final db = await database;
+    return db.query('budgets');
+  }
+
+  static Future<void> setBudget(String? category, int amount) async {
+    final db = await database;
+    if (category != null) {
+      await db.delete('budgets', where: 'category = ?', whereArgs: [category]);
+    } else {
+      await db.delete('budgets', where: 'category IS NULL');
+    }
+    await db.insert('budgets', {
+      'category': category,
+      'amount': amount,
+      'period': 'monthly',
+    });
+  }
+
+  static Future<void> deleteBudget(int id) async {
+    final db = await database;
+    await db.delete('budgets', where: 'id = ?', whereArgs: [id]);
   }
 }

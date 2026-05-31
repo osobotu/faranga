@@ -3,7 +3,7 @@ import 'momo_parser.dart';
 import '../models/transaction.dart';
 
 class SmsService {
-  static const _channel = MethodChannel('momo_finance/sms');
+  static const _channel = MethodChannel('faranga/sms');
 
   /// Request SMS permission.
   static Future<bool> requestPermission() async {

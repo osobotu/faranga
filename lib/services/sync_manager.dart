@@ -32,12 +32,11 @@ class SyncManager {
     try {
       final result = await SmsService.readAndParseMomoSms();
       final newCount = await DatabaseService.insertBatch(result.parsed);
-      final categorized = await CategoryService.autoCategorize();
 
       final syncResult = SyncResult(
         found: result.parsed.length,
         newTransactions: newCount,
-        categorized: categorized,
+        categorized: 0,
         failed: result.failed.length,
       );
 

@@ -5,9 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'models/transaction.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/review_screen.dart';
 import 'services/analytics_service.dart';
 import 'services/database_service.dart';
+import 'services/notification_service.dart';
 import 'services/sync_manager.dart';
+import 'screens/budget_screen.dart';
 
 void main() => runApp(const MomoFinanceApp());
 
@@ -105,6 +108,12 @@ class _HomeScreenState extends State<HomeScreen> {
     // Start periodic sync (every 15 minutes)
     SyncManager.start(interval: const Duration(minutes: 15));
 
+    // Listen for incoming SMS in real time
+    NotificationService.onNewTransaction = () {
+      if (mounted) _loadData();
+    };
+    NotificationService.startListening();
+
     _loadData();
   }
 
@@ -112,6 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     SyncManager.onSyncComplete = null;
     SyncManager.stop();
+    NotificationService.stopListening();
     super.dispose();
   }
 
@@ -146,6 +156,52 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _showNavSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.analytics),
+              title: const Text('Analytics'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AnalyticsScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.checklist),
+              title: const Text('Review uncategorized'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ReviewScreen()),
+                ).then((_) => _loadData());
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet),
+              title: const Text('Budgets'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const BudgetScreen()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -154,6 +210,14 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Faranga'),
         actions: [
+          IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ReviewScreen()),
+            ).then((_) => _loadData()),
+            icon: const Icon(Icons.checklist),
+            tooltip: 'Review uncategorized',
+          ),
           IconButton(
             onPressed: _loading ? null : _manualSync,
             icon: _loading
@@ -227,11 +291,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AnalyticsScreen()),
-        ),
-        child: const Icon(Icons.analytics),
+        onPressed: () => _showNavSheet(context),
+        child: const Icon(Icons.menu),
       ),
     );
   }
@@ -305,13 +366,29 @@ class _TransactionTile extends StatelessWidget {
       subtitle: Text(
         '$dateStr${tx.category != null ? ' · ${tx.category}' : ''}',
       ),
-      trailing: Text(
-        '${tx.type == TransactionType.received ? '+' : '-'}${format.format(tx.amount)} RWF',
-        style: theme.textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: tx.type == TransactionType.received ? Colors.green : null,
-        ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            '${tx.type == TransactionType.received ? '+' : '-'}${format.format(tx.amount)} RWF',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: tx.type == TransactionType.received ? Colors.green : null,
+            ),
+          ),
+          if (tx.fee > 0)
+            Text(
+              'fee: ${format.format(tx.fee)}',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+        ],
       ),
     );
   }
 }
+
+
+// 0784 803 833 

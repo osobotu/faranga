@@ -23,6 +23,7 @@ class OnboardingScreen extends StatelessWidget {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_complete', true);
+    await prefs.setString('first_use_date', DateTime.now().toIso8601String());
     onComplete();
   }
 
