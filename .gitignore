@@ -27,3 +27,4 @@ Thumbs.db
 # Sensitive
 .env
 *.env
+plan.md

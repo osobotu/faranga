@@ -3,14 +3,15 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/transaction.dart';
+import 'screens/agent_screen.dart';
 import 'screens/analytics_screen.dart';
+import 'screens/budget_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/review_screen.dart';
 import 'services/analytics_service.dart';
 import 'services/database_service.dart';
 import 'services/notification_service.dart';
 import 'services/sync_manager.dart';
-import 'screens/budget_screen.dart';
 
 void main() => runApp(const MomoFinanceApp());
 
@@ -85,7 +86,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   List<MomoTransaction> _transactions = [];
   Map<String, int> _summary = {'today': 0, 'week': 0, 'month': 0};
   bool _loading = false;
@@ -93,9 +95,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final _currencyFormat = NumberFormat('#,###', 'en');
 
+  // Bouncing animation for the AI assistant FAB
+  late final AnimationController _aiFabController;
+  late final Animation<double> _aiFabScale;
+
   @override
   void initState() {
     super.initState();
+    _aiFabController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _aiFabScale = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _aiFabController, curve: Curves.easeInOut),
+    );
+    Future.delayed(const Duration(seconds: 2), _pulseAiFab);
 
     // Listen for background sync results
     SyncManager.onSyncComplete = (result) {
@@ -117,8 +131,21 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
+  void _pulseAiFab() {
+    if (!mounted) return;
+    _aiFabController.forward().then((_) {
+      if (mounted) {
+        _aiFabController.reverse().then((_) {
+          // Repeat after a pause
+          Future.delayed(const Duration(seconds: 4), _pulseAiFab);
+        });
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _aiFabController.dispose();
     SyncManager.onSyncComplete = null;
     SyncManager.stop();
     NotificationService.stopListening();
@@ -290,9 +317,31 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showNavSheet(context),
-        child: const Icon(Icons.menu),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // AI assistant FAB
+          ScaleTransition(
+            scale: _aiFabScale,
+            child: FloatingActionButton(
+              heroTag: 'ai_fab',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AgentScreen()),
+              ),
+              backgroundColor: Theme.of(context).colorScheme.tertiary,
+              foregroundColor: Theme.of(context).colorScheme.onTertiary,
+              tooltip: 'AI Assistant',
+              child: const Icon(Icons.assistant),
+            ),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'menu_fab',
+            onPressed: () => _showNavSheet(context),
+            child: const Icon(Icons.menu),
+          ),
+        ],
       ),
     );
   }
